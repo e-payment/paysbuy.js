@@ -13,8 +13,11 @@ Client side JavaScript library for tokenizing cards. Currently supports these br
 
 Insert the `paysbuy.js` or minified `paysbuy.min.js` script into your page:
 
+```html
+<script src="paysbuy.min.js"></script>
+```
 
-#### Then set your public key somewhere on your page in a `script` tag
+Then set your public key somewhere on your page in a `script` tag
 
 ```js
 Paysbuy.setPublicKey('pub_hrkK7qM6Can2vCsolp');

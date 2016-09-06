@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Tokenizer Client Sample</title>
+</head>
+<body>
+
+	<h1>Testing tokenizer</h1>
+
+	<button onclick="doTest();">Test</button>
+	
+	<script src="paysbuy.min.js"></script>
+	<script type="text/javascript">
+		
+		function doTest() {
+
+			Paysbuy.setPublicKey('pub_hrkK7qM6Can2vCsolp');
+
+			Paysbuy.createToken({
+				card_number:'4111111111111111',
+				card_expiry_date:'04-2020',
+				card_cvn:'324'
+			}, handler);
+
+		}
+
+		function handler(status, response) {
+			if (response.token) {
+				alert('The status was '+status+', and the returned token was "'+response.token+'"');
+			} else {
+				alert(response.code+": "+response.message);
+			}
+			
+		}
+
+	</script>
+
+</body>
+</html>

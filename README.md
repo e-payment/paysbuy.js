@@ -47,4 +47,4 @@ This will tokenize a card with the API. This token is used instead of the card n
 
 ### Example
 
-A working example showing how to use this library can be found in [client_sample.html](http://www.google.com).
+A working example showing how to use this library can be found in [`client_sample.html`](https://github.com/paysbuy/paysbuy.js/blob/master/client_sample.html).

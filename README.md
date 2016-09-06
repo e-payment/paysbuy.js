@@ -34,7 +34,7 @@ This sets up your public key to authenticate with the PAYSBUY servers
 
 **Arguments:**
 
-* `key` (required) - the public key that you can find in **where??**
+* `key` (required) - the public key that you were provided when you registered
 
 ### createToken(object, callback)
 

@@ -3,6 +3,11 @@
 <head>
 	<meta charset="UTF-8">
 	<title>Tokenizer Client Sample</title>
+	<style>
+		label, input { display:inline-block }
+		label { width:10em }
+		input { width:15em }
+	</style>
 </head>
 <body>
 
@@ -24,7 +29,7 @@
 		<label for="cvv">CVV:</label><input type="text" id="cvv" value="324">
 	</p>
 
-	<button onclick="doTest();">Test</button>
+	<button onclick="doTest();">Tokenize</button>
 	
 	<script src="paysbuy.min.js"></script>
 	<script type="text/javascript">

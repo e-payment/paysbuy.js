@@ -7,6 +7,21 @@
 <body>
 
 	<h1>Testing tokenizer</h1>
+	
+	<p>Fill in the details below, and click 'tokenize'</p>
+	
+	<p>
+		<label for="key">Public key:</label><input type="text" id="key" value="pub_hrkK7qM6Can2vCsolp">
+	</p>
+	<p>
+		<label for="cardnum">Card number:</label><input type="text" id="cardnum" value="4111111111111111">
+	</p>
+	<p>
+		<label for="expire">Expiry date:</label><input type="text" id="expire" value="04-2020">
+	</p>
+	<p>
+		<label for="cvv">CVV:</label><input type="text" id="cvv" value="324">
+	</p>
 
 	<button onclick="doTest();">Test</button>
 	
@@ -15,12 +30,12 @@
 		
 		function doTest() {
 
-			Paysbuy.setPublicKey('pub_hrkK7qM6Can2vCsolp');
+			Paysbuy.setPublicKey(document.getElementById('key').value);
 
 			Paysbuy.createToken({
-				card_number:'4111111111111111',
-				card_expiry_date:'04-2020',
-				card_cvn:'324'
+				card_number:document.getElementById('cardnum').value,
+				card_expiry_date:document.getElementById('expire').value,
+				card_cvn:document.getElementById('cvv').value
 			}, handler);
 
 		}

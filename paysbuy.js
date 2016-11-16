@@ -1084,7 +1084,7 @@ easyXDM.Socket = function(config){
     
     // set the origin
     this.origin = getLocation(config.remote);
-	
+    
     /**
      * Initiates the destruction of the stack.
      */
@@ -1246,7 +1246,7 @@ easyXDM.Rpc = function(config, jsonRpcConfig){
             }
         }
     }
-	
+    
     // create the stack
     var stack = chainStack(prepareTransportStack(config).concat([new easyXDM.stack.RpcBehavior(this, jsonRpcConfig), {
         callback: function(success){
@@ -1255,10 +1255,10 @@ easyXDM.Rpc = function(config, jsonRpcConfig){
             }
         }
     }]));
-	
+    
     // set the origin 
     this.origin = getLocation(config.remote);
-	
+    
     
     /**
      * Initiates the destruction of the stack.
@@ -2583,70 +2583,192 @@ easyXDM.stack.RpcBehavior = function(proxy, config){
 global.easyXDM = easyXDM;
 })(window, document, location, window.setTimeout, decodeURIComponent, encodeURIComponent);
 ;(function(window, module, undefined) {
-	"use strict";
+    "use strict";
 
-	var Paysbuy = (function(undefined) {
+    var Paysbuy = (function() {
 
-		// private vars
-		var
-			RPC_TIMEOUT = 20000,
-			URL_TOKENIZER = "https://dev.mob.paysbuy.com/wallet/demopay/tokenizer.html",
-			URL_ASSETS = "https://dev.mob.paysbuy.com/wallet/demopay/assets",
-			_publicKey = '',
-			_RPC = false,
-			_easyXDM = window.easyXDM
-		;
-		_easyXDM.DomHelper.requiresJSON(URL_ASSETS+'/json2.js');
+        // private vars
+        var
+            RPC_TIMEOUT = 20000,
 
-		function _createRPC(callback) {
-			var ret;
-			if (_RPC) {
-				// use the RPC we already created
-				ret = _RPC;
-			} else {
-				// remove the RPC if it has obviously timed out
-				var tm = setTimeout(function() {
-					_RPC.destroy();
-					_RPC = false;
-					callback && callback();
-				}, RPC_TIMEOUT);
-				// create a new RPC
-				ret = new _easyXDM.Rpc({
-					remote  : URL_TOKENIZER,
-					swf     : URL_ASSETS+'/easyxdm.swf',
-					onReady : function() { clearTimeout(tm); }, 
-				}, {remote: {createToken: {}}});
-			}
-			return ret;
-		}
+            URL_TOKENIZER = "http://localhost:3000/dist/tokenizer_domain/tokenizer.html",
+            URL_ASSETS = "http://localhost:3000/dist/assets",
+            URL_SWF = URL_ASSETS+'/easyxdm.swf',
+            URL_JSONJS = URL_ASSETS+'/json2.js',
 
-		// public vars
-		function setPublicKey(key) {
-			return _publicKey = key;
-		}
-		
-		function createToken(cardDetails, handler) {
-			_RPC = _createRPC(function() { handler(0, {code: 'rpc_error', message: 'Timed out connecting to tokenizer'}); });
-			_RPC.createToken(
-				_publicKey,
-				cardDetails,
-				function(resp) { handler(resp.status, resp.data); },
-				function(err) { handler(err.data.status, err.data.data); }
-			);
-		}
+            ANIM_TIME = 300,
 
-		// return public interface
-		return {
-			setPublicKey: setPublicKey,
-			createToken: createToken
-		};
+            STYLE_IFRAME = {
+                border: 'none',
+                'border-radius': '3px',
+                margin: '0',
+                background: '#fff',
+                height: '90%',
+                position: 'fixed',
+                top: '5%',
+                width: '80%',
+                left: '10%',
+                'box-sizing': 'border-box',
+                opacity: '0',
+                'box-shadow': '0 17px 16px -10px rgba(0,0,0,0.25)',
+                transition: ANIM_TIME+'ms opacity ease, transform '+ANIM_TIME+'ms',
+                transform: 'scale(0.95)'
+            },
+            STYLE_3DSECURE_OPEN = { transform: 'scale(1)', opacity: 1 },
+            STYLE_3DSECURE_CLOSE = { transform: 'scale(0.95)', opacity: 0 },
+            STYLE_CONTAINER = {
+                border: 'none',
+                opacity: '0',
+                visibility: 'hidden',
+                zIndex: '99999',
+                left: '0',
+                top: '0',
+                position: 'fixed',
+                overflowX: 'hidden',
+                width: '100%',
+                height: '100%',
+                transition: ANIM_TIME+'ms opacity ease'
+            },
 
-	})(undefined);
+            _publicKey = '',
+            _RPC = false,
+            _easyXDM = window.easyXDM,
+            _container = false,
+            _containerCreated = false,
+            _iframe = false,
+            _greyBack = true,
+            _use3DSecure = false
 
-	// exports
-	if (typeof module.exports === "object") {
-		module.exports = Paysbuy;
-	}
-	window.Paysbuy = Paysbuy;
+        ;
+
+        _easyXDM.DomHelper.requiresJSON(URL_JSONJS); // Tell easyXDM where to find the JSON polyfill
+
+        function _createRPC(callback) {
+            var ret;
+            if (_RPC) {
+                // use the RPC we already created
+                ret = _RPC;
+            } else {
+                // remove the RPC if it has obviously timed out
+                var tm = setTimeout(function() {
+                    _RPC.destroy();
+                    _RPC = false;
+                    callback && callback();
+                }, RPC_TIMEOUT);
+                // create container for the 3DS iframe, if we haven't been given one already
+                _container = _container || _createContainer();
+                // create a new RPC
+                ret = new _easyXDM.Rpc({
+                    remote  : URL_TOKENIZER,
+                    swf     : URL_SWF,
+                    onReady : function() { clearTimeout(tm); _iframe = _prepIFrame(_container, _containerCreated); }, 
+                    container: _container,
+                }, {
+                    remote: {createToken: {}},
+                    local: {
+                        show3DS: Paysbuy.show3DSecure,
+                        hide3DS: Paysbuy.hide3DSecure,
+                        set3DSHeight: Paysbuy.set3DSHeight
+                    }
+                });
+            }
+            return ret;
+        }
+
+        function _prepIFrame(fromContainer, useStyle) {
+            var
+                els = fromContainer.getElementsByTagName('iframe'),
+                iframe = els.length ? els[0] : false
+            ;
+            useStyle && _styleElement(iframe, STYLE_IFRAME);
+            return iframe;
+        }
+
+        function _setContainer(container) {
+            _container = typeof container == 'string' ? window.document.getElementById(container) : container;
+        }
+
+        function _createContainer() {
+            var container = window.document.createElement('div');
+            var style = STYLE_CONTAINER;
+            if (_greyBack) style.backgroundColor = 'rgba(0,0,0,0.75)';
+            _styleElement(container, style);
+            window.document.body.appendChild(container);
+            _containerCreated = true;
+            return container;
+        }
+
+        function _styleElement(elem, styles) {
+            var
+                transf = ['webkitT', 'MozT', 'msT', 'OT'],
+                transi = ['-webkit-', '-moz-', '-ms-', '-o-'],
+                st, attr
+            ;
+            for (attr in styles) {
+                elem.style[attr] = styles[attr];
+                if (attr=='transform') for (st in transf) elem.style[transf[st]+'ransform'] = styles[attr];
+                if (attr=='transition') for (st in transi) elem.style[transi[st]+'transition'] = styles[attr].replace('transform', transi[st]+'transform');
+            }
+            return elem;
+        }
+
+        // public vars
+        function setPublicKey(key) {
+            return _publicKey = key;
+        }
+
+        function customise(opts) {
+            opts.container3DSecure && _setContainer(opts.container3DSecure);
+            if (opts.show3DSecure) Paysbuy.show3DSecure = opts.show3DSecure;
+            if (opts.hide3DSecure) Paysbuy.hide3DSecure = opts.hide3DSecure;
+            if (opts.use3DSecure) _use3DSecure = opts.use3DSecure;
+            if (opts.greyBackground !== undefined) _greyBack = opts.greyBackground;
+        }
+
+        function show3DSecure() {
+            _styleElement(_container, { opacity: 1, visibility: 'visible' });
+            document.body.style.overflow = 'hidden';
+            _styleElement(_iframe, STYLE_3DSECURE_OPEN);
+        }
+
+        function hide3DSecure() {
+            setTimeout((function(ctr) { return function() {
+                ctr.style.visibility = 'hidden';
+            };})(_container), ANIM_TIME * 2);
+            document.body.style.overflow = '';
+            _styleElement(_iframe, STYLE_3DSECURE_CLOSE);
+            _container.style.opacity = '0';
+        }
+
+        function set3DSHeight(h) {
+            _iframe.style.height = h+'px';
+        }
+        
+        function createToken(cardDetails, handler) {
+            _RPC = _createRPC(function() { handler(0, {code: 'rpc_error', message: 'Timed out connecting to tokenizer'}); });
+            _RPC.createToken(
+                _publicKey,
+                cardDetails,
+                _use3DSecure,
+                function(resp) { handler(resp.status, resp.data); },
+                function(err) { handler(err.data.status, err.data.data); }
+            );
+        }
+
+        // return public interface
+        return {
+            setPublicKey: setPublicKey,
+            customise: customise,
+            createToken: createToken,
+            show3DSecure: show3DSecure,
+            hide3DSecure: hide3DSecure,
+            set3DSHeight: set3DSHeight,
+        };
+
+    })();
+
+    // exports
+    if (typeof module.exports === "object") module.exports = Paysbuy;
+    window.Paysbuy = Paysbuy;
 
 })(window, typeof module === "object" ? module : {});
